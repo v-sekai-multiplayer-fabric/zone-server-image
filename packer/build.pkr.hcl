@@ -75,6 +75,10 @@ build {
   name    = "zone-server-image-${var.version}"
   sources = ["source.qemu.zone-server"]
 
+  provisioner "shell" {
+    inline = ["mkdir -p /tmp/quadlets"]
+  }
+
   provisioner "file" {
     source      = "../configs/quadlets/"
     destination = "/tmp/quadlets/"
