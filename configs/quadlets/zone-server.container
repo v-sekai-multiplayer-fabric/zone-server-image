@@ -1,0 +1,22 @@
+[Unit]
+Description=zone-server headless Godot multiplayer zone runtime
+Documentation=https://github.com/v-sekai-multiplayer-fabric/zone-server
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/v-sekai-multiplayer-fabric/zone-server:latest
+ContainerName=zone-server
+Volume=/var/lib/zone-server:/var/lib/zone-server:Z
+EnvironmentFile=/etc/zone-server/env
+# Listener port TBD; uncomment + adjust once the multiplayer transport
+# choice is locked in.
+# PublishPort=7000:7000/udp
+
+[Service]
+Restart=always
+RestartSec=10
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target default.target
