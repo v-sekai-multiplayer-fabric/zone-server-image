@@ -1,50 +1,36 @@
-# zone-server-image
+# zone-server-quadlet
 
-V-Sekai zone-server VM image: headless Godot zone server runtime, run
-as a podman quadlet on top of `linux-base-image`. Built once per
-release via packer; consumed by the `infra` repo as the qcow2 for
-`harvester_virtualmachine.zone_server`.
+Podman [quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
+source for zone-server — the headless Godot multiplayer zone runtime
+(`FROM zone-godot-runtime`). Run by systemd on an AlmaLinux host.
 
-## What's in the image
+This repo is the source of truth for the unit; it is installed onto a
+host rather than baked into a VM image.
 
-Inherits everything from `linux-base-image` (AlmaLinux 9 + podman +
-chrony + qemu-guest-agent), and adds:
+## Layout
 
-- `/etc/containers/systemd/zone-server.container` — podman quadlet
-  running `ghcr.io/v-sekai-multiplayer-fabric/zone-server`
-- `/var/lib/zone-server` — mountpoint for baked zone assets the server
-  loads at boot (populated by infra-side cloud-init or pulled from
-  the baker's S3 output)
+- `quadlets/zone-server.container` — the quadlet. Tag pinned here.
+  Listener port is TBD pending the multiplayer transport choice;
+  uncomment `PublishPort` once it's settled.
+- `install.sh` — installs the unit, creates `/var/lib/zone-server`
+  (baked zone assets the server loads at boot), pre-pulls the image,
+  reloads systemd.
 
-zone-server is `FROM zone-godot-runtime` (built by `godot-images`) and
-runs the multiplayer zone server. The container image is pre-pulled
-into podman's local store so first boot is fast. Tag pinned in
-`configs/quadlets/zone-server.container`; bumping is a deliberate
-edit + re-bake.
-
-Listener ports are TBD pending the multiplayer transport choice
-(WebTransport on UDP/443 like the gateway? a dedicated UDP port per
-zone? something else?). The quadlet exposes nothing for now; uncomment
-PublishPort once the protocol is settled.
-
-## Build
-
-CI on push to main + weekly schedule. Local:
+## Install
 
 ```sh
-cd packer
-bash scripts/prepare-cidata.sh
-packer init build.pkr.hcl
-packer build build.pkr.hcl
-ls ../output/
+sudo ./install.sh
+# write /etc/zone-server/env if the deployment needs it
+sudo systemctl start zone-server.service
 ```
 
-## Inheritance
+## Configuration (per-deployment, NOT in this repo)
 
-Pin the parent version explicitly in `build.pkr.hcl`:
+- `/etc/zone-server/env` — per-deployment config.
+- `/var/lib/zone-server` — baked zone assets (populated by deployment
+  cloud-init or pulled from the baker's S3 output).
 
-```hcl
-variable "source_image_url" {
-  default = "https://github.com/v-sekai-multiplayer-fabric/linux-base-image/releases/download/v0.1.0/linux-base-image.qcow2"
-}
-```
+## CI
+
+`.github/workflows/lint.yml` validates the unit via podman's systemd
+generator on every push/PR.
